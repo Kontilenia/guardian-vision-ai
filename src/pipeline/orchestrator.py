@@ -12,6 +12,7 @@ import speech
 import tier_classifier
 import trust_engine
 import vision
+from config import get_settings
 from schemas import (
     ConfidenceBand,
     Decision,
@@ -43,15 +44,18 @@ def _blocked(reason: str, spoken: str) -> FinalResponse:
 
 def _trace():
     """Return a Foundry session for tracing, or a no-op if unavailable."""
+    class _NoOp:
+        def record(self, *args, **kwargs) -> None:
+            ...
+
+    if get_settings().use_key_auth:
+        return _NoOp()
+
     try:
         from foundry_agent import GuardianAgentSession
 
         return GuardianAgentSession()
     except Exception:
-        class _NoOp:
-            def record(self, *args, **kwargs) -> None:
-                ...
-
         return _NoOp()
 
 
@@ -74,7 +78,8 @@ def run(request: UserRequest, *, synthesize_audio: bool = True) -> FinalResponse
 
     # 2. Tier classification.
     tier_result = tier_classifier.classify(request.question)
-    session.record("assistant", f"tier={tier_result.tier.value}: {tier_result.rationale}")
+    session.record(
+        "assistant", f"tier={tier_result.tier.value}: {tier_result.rationale}")
 
     # 3. Vision on the first capture.
     first = vision.analyze(request.question, request.image_bytes)
@@ -97,17 +102,20 @@ def run(request: UserRequest, *, synthesize_audio: bool = True) -> FinalResponse
                 decision=decision,
                 trust=trust,
                 spoken_text=spoken,
-                audio_bytes=speech.synthesize(spoken) if synthesize_audio else None,
+                audio_bytes=speech.synthesize(
+                    spoken) if synthesize_audio else None,
             )
 
         second = vision.analyze(request.question, request.second_image_bytes)
         session.record("assistant", f"vision2: {second.observations}")
-        agreement = trust_engine.values_agree(first.critical_value, second.critical_value)
+        agreement = trust_engine.values_agree(
+            first.critical_value, second.critical_value)
         active_vision = first if agreement else second
 
     # 5. Trust engine.
     trust = trust_engine.compute(active_vision, agreement=agreement)
-    session.record("assistant", f"trust band={trust.band.value} score={trust.score}")
+    session.record(
+        "assistant", f"trust band={trust.band.value} score={trust.score}")
 
     # 6. Policy engine.
     decision = policy_engine.decide(
@@ -118,7 +126,8 @@ def run(request: UserRequest, *, synthesize_audio: bool = True) -> FinalResponse
     spoken = _compose_spoken(decision)
     output_safety = content_safety.check_text(spoken)
     if not output_safety.allowed:
-        reason = "output_guardrail: " + ", ".join(output_safety.flagged_categories)
+        reason = "output_guardrail: " + \
+            ", ".join(output_safety.flagged_categories)
         session.record("assistant", reason)
         return _blocked(
             reason,

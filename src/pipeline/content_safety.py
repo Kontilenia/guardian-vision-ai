@@ -6,7 +6,6 @@ from azure.ai.contentsafety.models import (
     AnalyzeTextOptions,
     ImageData,
 )
-from azure.core.exceptions import HttpResponseError
 
 from azure_clients import get_content_safety_client
 from schemas import SafetyResult
@@ -27,10 +26,10 @@ def _summarize(categories_analysis) -> tuple[list[str], int]:
 
 
 def check_text(text: str) -> SafetyResult:
-    client = get_content_safety_client()
     try:
+        client = get_content_safety_client()
         result = client.analyze_text(AnalyzeTextOptions(text=text))
-    except HttpResponseError as exc:
+    except Exception as exc:
         return SafetyResult(allowed=False, flagged_categories=["service_error"], raw={"error": str(exc)})
 
     flagged, max_severity = _summarize(result.categories_analysis)
@@ -38,12 +37,12 @@ def check_text(text: str) -> SafetyResult:
 
 
 def check_image(image_bytes: bytes) -> SafetyResult:
-    client = get_content_safety_client()
     try:
+        client = get_content_safety_client()
         result = client.analyze_image(
             AnalyzeImageOptions(image=ImageData(content=image_bytes))
         )
-    except HttpResponseError as exc:
+    except Exception as exc:
         return SafetyResult(allowed=False, flagged_categories=["service_error"], raw={"error": str(exc)})
 
     flagged, max_severity = _summarize(result.categories_analysis)

@@ -3,10 +3,10 @@
 Empowering accessibility through trusted visual intelligence.
 
 Guardian Vision AI is a confidence-first accessibility assistant for visually impaired
-users. A user uploads a photo and asks a question; every answer is evaluated before it is
-spoken. When confidence is high, the user gets immediate voice guidance. When confidence is
-low, the system explains the uncertainty and proposes safer alternatives. Guardrails block
-inappropriate, illegal, medical, or unsafe requests.
+users. A user uploads a photo and asks a question by voice or text; every answer is evaluated
+before it is spoken. When confidence is high, the user gets immediate voice guidance. When
+confidence is low, the system explains the uncertainty and proposes safer alternatives.
+Guardrails block inappropriate, illegal, medical, or unsafe requests.
 
 ## Safety tiers
 
@@ -30,8 +30,8 @@ Input guardrail → Tier classify → GPT-4o vision → (Tier 1: second capture 
 | Azure AI Foundry | Guardian Agent orchestration + traceability |
 | GPT-4o | Vision understanding |
 | GPT-5.x Mini | Tier classification + text safeguards |
-| Azure AI Speech | Text-to-speech (speech-to-text optional) |
-| Azure AI Content Safety | Input and output guardrails |
+| Azure AI Speech | Speech-to-text input and text-to-speech output |
+| Azure AI Content Safety on the Foundry account | Input and output guardrails |
 
 ## Project layout
 
@@ -64,8 +64,11 @@ cp src/.env.example src/.env   # then fill in your Azure endpoints and keys
 streamlit run src/app.py
 ```
 
-Authentication uses `DefaultAzureCredential` by default (set `AZURE_CREDENTIAL_MODE=key`
-to use API keys for Azure OpenAI). Model deployment names are configurable via `.env`.
+Authentication uses `DefaultAzureCredential` by default. Grant that identity the
+`Cognitive Services User` role on the Foundry resource. For local key authentication, set
+`AZURE_CREDENTIAL_MODE=key`; `AZURE_OPENAI_API_KEY` is then used as the Foundry account key
+for both model and Content Safety calls. No separate Content Safety resource, endpoint, or
+key is required. Model deployment names are configurable via `.env`.
 
 ## Responsible AI notes
 

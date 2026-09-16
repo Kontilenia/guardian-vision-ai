@@ -1,10 +1,11 @@
 """Guardian Vision AI — Streamlit app.
 
-Upload a photo, type a question, and hear a confidence-first voice reply. Tier 1
+Upload a photo, ask by voice or text, and hear a confidence-first voice reply. Tier 1
 (consequential) requests use two explicit image slots to cross-check the reading.
 """
 from __future__ import annotations
 
+import hashlib
 import sys
 from pathlib import Path
 
@@ -16,6 +17,7 @@ sys.path.insert(0, str(_SRC / "pipeline"))
 import streamlit as st  # noqa: E402
 
 import orchestrator  # noqa: E402
+import speech  # noqa: E402
 from schemas import ConfidenceBand, Decision, UserRequest  # noqa: E402
 
 _BAND_ICON = {
@@ -31,7 +33,14 @@ st.caption(
 
 
 def _reset() -> None:
-    for key in ("first_image", "pending_question", "awaiting_second"):
+    for key in (
+        "first_image",
+        "pending_question",
+        "awaiting_second",
+        "question_audio",
+        "voice_audio_digest",
+        "voice_transcript",
+    ):
         st.session_state.pop(key, None)
 
 
@@ -80,8 +89,30 @@ if st.session_state.get("awaiting_second"):
 
 # --- Initial request flow ---
 else:
-    question = st.text_input(
-        "Your question", placeholder="e.g. What color is this shirt?")
+    recording = st.audio_input("Speak your question", key="question_audio")
+    voice_question = ""
+    if recording is not None:
+        audio_bytes = recording.getvalue()
+        audio_digest = hashlib.sha256(audio_bytes).hexdigest()
+        if st.session_state.get("voice_audio_digest") != audio_digest:
+            try:
+                with st.spinner("Transcribing..."):
+                    transcript = speech.transcribe(audio_bytes)
+            except Exception:
+                transcript = None
+            st.session_state["voice_transcript"] = transcript
+            st.session_state["voice_audio_digest"] = audio_digest
+
+        voice_question = st.session_state.get("voice_transcript") or ""
+        if voice_question:
+            st.text_area("Transcript", value=voice_question, disabled=True)
+        else:
+            st.error(
+                "I couldn't understand that recording. Please try again or type your question.")
+
+    typed_question = st.text_input(
+        "Or type your question", placeholder="e.g. What color is this shirt?")
+    question = voice_question or typed_question.strip()
     photo = st.file_uploader(
         "Photo", type=["jpg", "jpeg", "png"], key="first_upload")
 

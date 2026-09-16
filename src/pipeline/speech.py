@@ -1,5 +1,8 @@
-"""Azure AI Speech: text-to-speech (STT is a stretch goal, included as a helper)."""
+"""Azure AI Speech: text-to-speech and speech-to-text."""
 from __future__ import annotations
+
+import tempfile
+from pathlib import Path
 
 import azure.cognitiveservices.speech as speechsdk
 
@@ -28,15 +31,27 @@ def synthesize(text: str) -> bytes | None:
 
 
 def transcribe(audio_bytes: bytes) -> str | None:
-    """Optional STT helper for the stretch goal."""
-    stream = speechsdk.audio.PushAudioInputStream()
-    stream.write(audio_bytes)
-    stream.close()
-    audio_config = speechsdk.audio.AudioConfig(stream=stream)
-    recognizer = speechsdk.SpeechRecognizer(
-        speech_config=_speech_config(), audio_config=audio_config
-    )
-    result = recognizer.recognize_once()
-    if result.reason == speechsdk.ResultReason.RecognizedSpeech:
-        return result.text
-    return None
+    """Return an en-US transcript for WAV audio bytes, or None on failure."""
+    if not audio_bytes:
+        return None
+
+    audio_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as audio_file:
+            audio_file.write(audio_bytes)
+            audio_path = Path(audio_file.name)
+
+        config = _speech_config()
+        config.speech_recognition_language = "en-US"
+        audio_config = speechsdk.audio.AudioConfig(filename=str(audio_path))
+        recognizer = speechsdk.SpeechRecognizer(
+            speech_config=config, audio_config=audio_config
+        )
+        result = recognizer.recognize_once()
+        if result.reason == speechsdk.ResultReason.RecognizedSpeech:
+            transcript = result.text.strip()
+            return transcript or None
+        return None
+    finally:
+        if audio_path is not None:
+            audio_path.unlink(missing_ok=True)

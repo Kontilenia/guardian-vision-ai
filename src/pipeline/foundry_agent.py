@@ -10,6 +10,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 from azure.ai.projects import AIProjectClient
+from azure.ai.projects.models import FunctionTool, PromptAgentDefinition
 
 from azure_clients import get_credential
 from config import get_settings
@@ -25,58 +26,48 @@ Never bypass the safety guardrails."""
 
 # Tool contracts describing each pipeline stage the agent orchestrates.
 _TOOL_DEFINITIONS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "classify_tier",
-            "description": "Classify the request into Tier 0/1/2.",
-            "parameters": {
-                "type": "object",
-                "properties": {"question": {"type": "string"}},
-                "required": ["question"],
-            },
+    FunctionTool(
+        name="classify_tier",
+        description="Classify the request into Tier 0/1/2.",
+        parameters={
+            "type": "object",
+            "properties": {"question": {"type": "string"}},
+            "required": ["question"],
         },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "analyze_image",
-            "description": "Extract observable facts, self-confidence, and the critical value.",
-            "parameters": {
-                "type": "object",
-                "properties": {"question": {"type": "string"}},
-                "required": ["question"],
-            },
+        strict=False,
+    ),
+    FunctionTool(
+        name="analyze_image",
+        description="Extract observable facts, self-confidence, and the critical value.",
+        parameters={
+            "type": "object",
+            "properties": {"question": {"type": "string"}},
+            "required": ["question"],
         },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "check_content_safety",
-            "description": "Run input/output content safety guardrails.",
-            "parameters": {
-                "type": "object",
-                "properties": {"stage": {"type": "string", "enum": ["input", "output"]}},
-                "required": ["stage"],
-            },
+        strict=False,
+    ),
+    FunctionTool(
+        name="check_content_safety",
+        description="Run input/output content safety guardrails.",
+        parameters={
+            "type": "object",
+            "properties": {"stage": {"type": "string", "enum": ["input", "output"]}},
+            "required": ["stage"],
         },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "score_trust",
-            "description": "Compute the composite confidence band.",
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "apply_policy",
-            "description": "Apply the tier rules to produce the final decision.",
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
+        strict=False,
+    ),
+    FunctionTool(
+        name="score_trust",
+        description="Compute the composite confidence band.",
+        parameters={"type": "object", "properties": {}},
+        strict=False,
+    ),
+    FunctionTool(
+        name="apply_policy",
+        description="Apply the tier rules to produce the final decision.",
+        parameters={"type": "object", "properties": {}},
+        strict=False,
+    ),
 ]
 
 
@@ -91,22 +82,18 @@ def get_project_client() -> AIProjectClient:
 
 @lru_cache(maxsize=1)
 def ensure_agent() -> str:
-    """Create or resolve the persistent Guardian Agent, returning its id."""
+    """Publish the current Guardian configuration as a new agent version."""
     settings = get_settings()
     client = get_project_client()
-
-    if settings.guardian_agent_id:
-        return settings.guardian_agent_id
-
-    for agent in client.agents.list_agents():
-        if agent.name == settings.guardian_agent_name:
-            return agent.id
-
-    created = client.agents.create_agent(
+    definition = PromptAgentDefinition(
         model=settings.text_deployment,
-        name=settings.guardian_agent_name,
         instructions=_AGENT_INSTRUCTIONS,
         tools=_TOOL_DEFINITIONS,
+    )
+    created = client.agents.create_version(
+        agent_name=settings.guardian_agent_name,
+        definition=definition,
+        description="Guardian Vision AI safety and confidence workflow",
     )
     return created.id
 
