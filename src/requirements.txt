@@ -1,0 +1,9 @@
+streamlit>=1.38
+azure-ai-projects>=1.0.0b7
+azure-ai-agents>=1.0.0
+azure-identity>=1.17
+openai>=1.51
+azure-cognitiveservices-speech>=1.40
+azure-ai-contentsafety>=1.0.0
+pydantic>=2.7
+python-dotenv>=1.0

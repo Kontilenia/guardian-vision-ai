@@ -1,0 +1,52 @@
+"""Vision analysis (GPT-4o): observable facts, self-confidence, critical value."""
+from __future__ import annotations
+
+import base64
+import json
+from pathlib import Path
+
+from azure_clients import get_openai_client
+from config import get_settings
+from evidence import evidence_from_choice
+from schemas import VisionResult
+
+_PROMPT = (Path(__file__).parent.parent / "prompts" / "vision.txt").read_text()
+
+
+def _data_url(image_bytes: bytes) -> str:
+    encoded = base64.b64encode(image_bytes).decode("utf-8")
+    return f"data:image/jpeg;base64,{encoded}"
+
+
+def analyze(question: str, image_bytes: bytes) -> VisionResult:
+    client = get_openai_client()
+    settings = get_settings()
+
+    response = client.chat.completions.create(
+        model=settings.vision_deployment,
+        messages=[
+            {"role": "system", "content": _PROMPT},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": question},
+                    {"type": "image_url", "image_url": {
+                        "url": _data_url(image_bytes)}},
+                ],
+            },
+        ],
+        temperature=0,
+        response_format={"type": "json_object"},
+        logprobs=True,
+    )
+
+    choice = response.choices[0]
+    data = json.loads(choice.message.content)
+    critical = data.get("critical_value")
+    return VisionResult(
+        observations=data.get("observations", ""),
+        self_confidence=float(data.get("self_confidence", 0.0)),
+        critical_value=None if critical in (
+            None, "", "null") else str(critical),
+        evidence=evidence_from_choice(choice),
+    )
