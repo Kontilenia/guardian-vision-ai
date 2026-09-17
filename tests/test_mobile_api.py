@@ -56,6 +56,15 @@ class MobileApiTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(response.framing_action, "move_left")
 
+    def test_serializes_vertical_framing_action(self):
+        response = mobile_api._serialize_result(
+            "session-vertical",
+            make_result(Decision.NEEDS_SECOND_CAPTURE, FramingAction.MOVE_UP),
+        )
+
+        self.assertEqual(response.framing_action, "move_up")
+        self.assertTrue(response.needs_second_capture)
+
     async def test_second_capture_reuses_stored_question_and_first_frame(self):
         first_result = make_result(Decision.NEEDS_SECOND_CAPTURE)
         final_result = make_result(Decision.ANSWER)

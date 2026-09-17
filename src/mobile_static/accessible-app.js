@@ -32,12 +32,25 @@ const STATE = Object.freeze({
 });
 
 const FRAMING_MESSAGES = Object.freeze({
-    move_left: "Move the camera slightly left, then take the picture again.",
-    move_right: "Move the camera slightly right, then take the picture again.",
-    move_closer: "Move the camera closer, then take the picture again.",
-    move_farther: "Move the camera farther away, then take the picture again.",
-    hold_steady: "Hold the camera steady, then take the picture again.",
-    improve_lighting: "Move to better lighting, then take the picture again.",
+    move_left: "Keep the phone upright and facing the item. Move the whole phone about 10 centimeters to your left, then take the picture again.",
+    move_right: "Keep the phone upright and facing the item. Move the whole phone about 10 centimeters to your right, then take the picture again.",
+    move_up: "Keep the phone upright and facing the item. Raise the whole phone about 10 centimeters, then take the picture again.",
+    move_down: "Keep the phone upright and facing the item. Lower the whole phone about 10 centimeters, then take the picture again.",
+    move_closer: "Keep the phone facing the item. Move it straight toward the item by about 10 centimeters, then take the picture again.",
+    move_farther: "Keep the phone facing the item. Move it straight back by about 20 centimeters, then take the picture again.",
+    hold_steady: "Hold the phone with both hands, rest your elbows against your body, pause for one second, then take the picture again.",
+    improve_lighting: "Keep the phone facing the item. Turn on a nearby light or move the item directly beneath a light, then take the picture again.",
+});
+
+const SECOND_CAPTURE_DIRECTIONS = Object.freeze({
+    move_left: "Keep the phone upright and facing the item. Move the whole phone about 10 centimeters to your left.",
+    move_right: "Keep the phone upright and facing the item. Move the whole phone about 10 centimeters to your right.",
+    move_up: "Keep the phone upright and facing the item. Raise the whole phone about 10 centimeters.",
+    move_down: "Keep the phone upright and facing the item. Lower the whole phone about 10 centimeters.",
+    move_closer: "Keep the phone facing the item. Move it straight toward the item by about 10 centimeters.",
+    move_farther: "Keep the phone facing the item. Move it straight back by about 20 centimeters.",
+    hold_steady: "Hold the phone with both hands, rest your elbows against your body, and pause for one second.",
+    improve_lighting: "Keep the phone facing the item. Turn on a nearby light or move the item directly beneath a light.",
 });
 
 const SILENCE_TO_SUBMIT_MS = 900;
@@ -368,8 +381,9 @@ async function submitFrame(frameBlob) {
             return;
         }
         sessionId = data.session_id;
-        waitingForSecondCapture = data.needs_second_capture;
-        await renderResult(data, generation);
+        const completedSecondCapture = waitingForSecondCapture;
+        waitingForSecondCapture = data.needs_second_capture && !completedSecondCapture;
+        await renderResult(data, generation, completedSecondCapture);
     } catch (error) {
         await handleFlowError(error, generation, "Analysis failed.");
     } finally {
@@ -377,7 +391,26 @@ async function submitFrame(frameBlob) {
     }
 }
 
-async function renderResult(data, generation) {
+async function renderResult(data, generation, completedSecondCapture = false) {
+    if (data.needs_second_capture && !completedSecondCapture) {
+        const framingDirection = SECOND_CAPTURE_DIRECTIONS[data.framing_action]
+            || "Keep the phone upright and facing the same item. Move the whole phone about 10 centimeters to your left for a second angle.";
+        const safetyPrompt = `For your safety, I need a second picture before I can answer. ${framingDirection} Then take the second picture.`;
+        waitingForSecondCapture = true;
+        lastAnswerText = "";
+        lastAnswerAudio = undefined;
+        answerPanel.hidden = true;
+        repeatButton.disabled = true;
+        retakeButton.disabled = true;
+        transition(STATE.AWAITING_SECOND, safetyPrompt);
+        captureActions.hidden = false;
+        setCaptureButtonLabel("Take second picture");
+        usePictureButton.hidden = true;
+        await speakStatusMessage(safetyPrompt);
+        captureButton.focus();
+        return;
+    }
+
     lastAnswerText = data.text;
     lastAnswerAudio = data.audio_base64;
     answerText.textContent = data.text;
@@ -403,17 +436,7 @@ async function renderResult(data, generation) {
         return;
     }
 
-    if (data.needs_second_capture) {
-        transition(STATE.AWAITING_SECOND, "Another view is needed for a more reliable answer.");
-        captureActions.hidden = false;
-        setCaptureButtonLabel("Take another picture");
-        usePictureButton.hidden = true;
-        await speakStatusMessage("Another view is needed. Point the camera at the item, then take another picture.");
-        captureButton.focus();
-        return;
-    }
-
-    const framingMessage = FRAMING_MESSAGES[data.framing_action];
+    const framingMessage = completedSecondCapture ? undefined : FRAMING_MESSAGES[data.framing_action];
     if (framingMessage) {
         transition(STATE.READY, framingMessage);
         captureActions.hidden = false;

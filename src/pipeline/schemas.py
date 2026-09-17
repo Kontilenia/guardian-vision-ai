@@ -30,10 +30,19 @@ class Decision(str, Enum):
 class FramingAction(str, Enum):
     MOVE_LEFT = "move_left"
     MOVE_RIGHT = "move_right"
+    MOVE_UP = "move_up"
+    MOVE_DOWN = "move_down"
     MOVE_CLOSER = "move_closer"
     MOVE_FARTHER = "move_farther"
     HOLD_STEADY = "hold_steady"
     IMPROVE_LIGHTING = "improve_lighting"
+
+
+class SensitiveContentCategory(str, Enum):
+    MEDICAL_RECORD = "medical_record"
+    FINANCIAL_DOCUMENT = "financial_document"
+    PERSONAL_CORRESPONDENCE = "personal_correspondence"
+    IDENTITY_DOCUMENT = "identity_document"
 
 
 class UserRequest(BaseModel):
@@ -61,6 +70,7 @@ class SafetyResult(BaseModel):
 class TierResult(BaseModel):
     tier: Tier
     rationale: str
+    medical_advice_requested: bool = False
     evidence: ProbabilityEvidence = Field(default_factory=ProbabilityEvidence)
 
 
@@ -70,6 +80,7 @@ class VisionResult(BaseModel):
     critical_value: Optional[str] = None
     evidence: ProbabilityEvidence = Field(default_factory=ProbabilityEvidence)
     framing_action: Optional[FramingAction] = None
+    sensitive_content_category: Optional[SensitiveContentCategory] = None
 
 
 class TrustResult(BaseModel):

@@ -31,7 +31,7 @@ def decide(
         return _tier0(tier, vision, trust)
     if tier is Tier.CONSEQUENTIAL:
         return _tier1(tier, vision, trust, has_second_capture)
-    return _tier2(tier, vision, trust)
+    return _tier2(tier_result, vision, trust)
 
 
 def _tier0(tier: Tier, vision: VisionResult, trust: TrustResult) -> PolicyDecision:
@@ -55,8 +55,8 @@ def _tier1(
             band=trust.band,
             offer_human=False,
             response_text=(
-                "This matters enough to double-check. Please take a second photo of the "
-                "same thing so I can compare the two readings."
+                "For your safety, I need a second photo before I can answer. Please take "
+                "another photo of the same thing so I can compare the two readings."
             ),
         )
 
@@ -86,11 +86,26 @@ def _tier1(
     )
 
 
-def _tier2(tier: Tier, vision: VisionResult, trust: TrustResult) -> PolicyDecision:
+def _tier2(
+    tier_result: TierResult, vision: VisionResult, trust: TrustResult
+) -> PolicyDecision:
+    if tier_result.medical_advice_requested:
+        return PolicyDecision(
+            decision=Decision.BLOCKED,
+            tier=tier_result.tier,
+            band=trust.band,
+            offer_human=True,
+            response_text=(
+                "I can read the printed instructions, but I cannot recommend dosage or "
+                "provide medical advice. Please consult a pharmacist, doctor, or official "
+                "medication guidance."
+            ),
+        )
+
     # Life-safety: observable facts only, never a conclusion/dose/diagnosis. Always offer a human.
     return PolicyDecision(
         decision=Decision.FACTS_ONLY,
-        tier=tier,
+        tier=tier_result.tier,
         band=trust.band,
         offer_human=True,
         response_text=(

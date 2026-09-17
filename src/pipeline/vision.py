@@ -8,7 +8,7 @@ from pathlib import Path
 from azure_clients import get_openai_client
 from config import get_settings
 from evidence import evidence_from_choice
-from schemas import FramingAction, VisionResult
+from schemas import FramingAction, SensitiveContentCategory, VisionResult
 
 _PROMPT = (Path(__file__).parent.parent / "prompts" / "vision.txt").read_text()
 
@@ -44,11 +44,17 @@ def analyze(question: str, image_bytes: bytes) -> VisionResult:
     data = json.loads(choice.message.content)
     critical = data.get("critical_value")
     raw_framing_action = data.get("framing_action")
+    raw_sensitive_category = data.get("sensitive_content_category")
     try:
         framing_action = FramingAction(
             raw_framing_action) if raw_framing_action else None
     except ValueError:
         framing_action = None
+    try:
+        sensitive_category = SensitiveContentCategory(
+            raw_sensitive_category) if raw_sensitive_category else None
+    except ValueError:
+        sensitive_category = None
     return VisionResult(
         observations=data.get("observations", ""),
         self_confidence=float(data.get("self_confidence", 0.0)),
@@ -56,4 +62,5 @@ def analyze(question: str, image_bytes: bytes) -> VisionResult:
             None, "", "null") else str(critical),
         evidence=evidence_from_choice(choice),
         framing_action=framing_action,
+        sensitive_content_category=sensitive_category,
     )

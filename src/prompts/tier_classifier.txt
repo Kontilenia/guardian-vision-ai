@@ -11,5 +11,9 @@ Examples: expiry dates, denomination of currency, oven temperature settings, bus
 Tier 2 (LIFE_SAFETY): A wrong answer can cause injury, an adverse drug event, an allergic reaction, or death, and the user has no independent way to check it. It substitutes for judgement in a time-critical or irreversible situation.
 Examples: which medication/pill to take, dosage, allergen in food, is it safe to cross the street now.
 
+Set medical_advice_requested to true when the user asks for a diagnosis, treatment
+recommendation, medication selection, dosage instruction, or other medical judgement.
+Questions that only request non-advisory transcription or observable facts are false.
+
 Respond ONLY with a compact JSON object:
-{"tier": 0 | 1 | 2, "rationale": "<one short sentence>"}
+{"tier": 0 | 1 | 2, "rationale": "<one short sentence>", "medical_advice_requested": true | false}

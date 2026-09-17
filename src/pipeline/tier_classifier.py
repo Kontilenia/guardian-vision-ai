@@ -33,5 +33,6 @@ def classify(question: str) -> TierResult:
     return TierResult(
         tier=Tier(int(data["tier"])),
         rationale=data.get("rationale", ""),
+        medical_advice_requested=data.get("medical_advice_requested") is True,
         evidence=evidence_from_choice(choice),
     )

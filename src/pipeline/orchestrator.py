@@ -24,10 +24,16 @@ from schemas import (
 )
 
 
-def _blocked(reason: str, spoken: str) -> FinalResponse:
+def _blocked(
+    reason: str,
+    spoken: str,
+    *,
+    tier: Tier = Tier.INFORMATIONAL,
+    synthesize_audio: bool = True,
+) -> FinalResponse:
     decision = PolicyDecision(
         decision=Decision.BLOCKED,
-        tier=Tier.INFORMATIONAL,
+        tier=tier,
         band=ConfidenceBand.LOW,
         offer_human=True,
         response_text=spoken,
@@ -37,7 +43,7 @@ def _blocked(reason: str, spoken: str) -> FinalResponse:
         decision=decision,
         trust=trust,
         spoken_text=spoken,
-        audio_bytes=speech.synthesize(spoken),
+        audio_bytes=speech.synthesize(spoken) if synthesize_audio else None,
         blocked_reason=reason,
     )
 
@@ -74,6 +80,7 @@ def run(request: UserRequest, *, synthesize_audio: bool = True) -> FinalResponse
         return _blocked(
             reason,
             "I can't help with this request. If you're in danger, please contact local emergency services.",
+            synthesize_audio=synthesize_audio,
         )
 
     # 2. Tier classification.
@@ -83,6 +90,14 @@ def run(request: UserRequest, *, synthesize_audio: bool = True) -> FinalResponse
 
     # 3. Vision on the first capture.
     first = vision.analyze(request.question, request.image_bytes)
+    if first.sensitive_content_category is not None:
+        reason = f"sensitive_content: {first.sensitive_content_category.value}"
+        session.record("assistant", reason)
+        return _blocked(
+            reason,
+            "I can't extract or disclose content from this type of sensitive document.",
+            synthesize_audio=synthesize_audio,
+        )
     session.record("assistant", f"vision1: {first.observations}")
 
     # 4. Tier 1 second-capture branch.
@@ -108,6 +123,14 @@ def run(request: UserRequest, *, synthesize_audio: bool = True) -> FinalResponse
             )
 
         second = vision.analyze(request.question, request.second_image_bytes)
+        if second.sensitive_content_category is not None:
+            reason = f"sensitive_content: {second.sensitive_content_category.value}"
+            session.record("assistant", reason)
+            return _blocked(
+                reason,
+                "I can't extract or disclose content from this type of sensitive document.",
+                synthesize_audio=synthesize_audio,
+            )
         session.record("assistant", f"vision2: {second.observations}")
         agreement = trust_engine.values_agree(
             first.critical_value, second.critical_value)
@@ -122,6 +145,15 @@ def run(request: UserRequest, *, synthesize_audio: bool = True) -> FinalResponse
     decision = policy_engine.decide(
         tier_result, active_vision, trust, has_second_capture=has_second
     )
+    if decision.decision is Decision.BLOCKED:
+        reason = "policy_guardrail: medical_advice"
+        session.record("assistant", reason)
+        return _blocked(
+            reason,
+            decision.response_text,
+            tier=tier_result.tier,
+            synthesize_audio=synthesize_audio,
+        )
 
     # 7. Output guardrail on the generated reply.
     spoken = _compose_spoken(decision)
@@ -133,6 +165,7 @@ def run(request: UserRequest, *, synthesize_audio: bool = True) -> FinalResponse
         return _blocked(
             reason,
             "I generated a response but held it back for safety. Let me connect you with a human helper.",
+            synthesize_audio=synthesize_audio,
         )
 
     session.record("assistant", spoken)

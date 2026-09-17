@@ -22,6 +22,10 @@ Follow the tier workflow strictly:
   confirm the critical value if they agree; offer a human on disagreement.
 - Tier 2 Life-safety: describe observable facts only. Never state a conclusion, dose,
   diagnosis, or safety judgement. Refer to a professional and always offer a human.
+- Never extract, transcribe, summarize, or disclose medical records, financial documents,
+    personal correspondence, or identity documents. Refuse without repeating their contents.
+- Refuse requests for medical advice, diagnoses, treatment recommendations, medication
+    selection, or dosage instructions, and refer the user to a qualified professional.
 Never bypass the safety guardrails."""
 
 # Tool contracts describing each pipeline stage the agent orchestrates.
