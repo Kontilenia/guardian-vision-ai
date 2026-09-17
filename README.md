@@ -64,6 +64,53 @@ cp src/.env.example src/.env   # then fill in your Azure endpoints and keys
 streamlit run src/app.py
 ```
 
+## Accessible mobile mock
+
+The mobile app is an audio-first browser experience with an accessible visual control
+panel. Choose Voice or Text before pressing Start. Voice mode requests camera and
+microphone access; Text mode requests only camera access. The required Start action also
+unlocks browser audio for status speech and feedback tones.
+
+In Voice mode, a tone confirms when listening begins. The app waits for the speaker to
+finish, pauses recording, captures the picture, and immediately confirms the capture with
+a shutter tone, optional vibration, visible status, and the spoken phrase "Picture
+captured. Thinking." It never records while speaking a status message or answer. Text mode
+uses the same capture and analysis path without listening to the microphone.
+
+Stop ends recording and playback, closes camera and microphone tracks, ignores unfinished
+requests, and clears pending second-capture state. Repeat answer replays the latest answer,
+and Take picture again preserves the question while replacing its image. Consequential
+questions that require a second view wait for the user to activate Take another picture;
+the app does not capture another view silently on a timer.
+
+Local darkness and blur checks are advisory. A user can retake the picture or choose Use
+this picture, so a heuristic cannot block access. Model-provided framing guidance is
+limited to fixed camera adjustments and is not navigation or obstacle-avoidance advice.
+Speak status messages can be turned off to avoid duplicate speech when using a screen
+reader; live-region status updates remain available.
+
+Run it locally:
+
+```bash
+uvicorn src.mobile_api:app --host 0.0.0.0 --port 8000
+```
+
+Open `http://localhost:8000` for local development. For a container or hosted app link,
+serve the same FastAPI app over HTTPS; browsers only allow camera and microphone access
+from secure contexts, except for localhost. A self-signed certificate is enough for local
+testing, but a trusted certificate or HTTPS reverse proxy is recommended for demos.
+
+Vibration is an optional enhancement and is not supported by every browser, notably iOS
+Safari. Validate permissions, audio routing, speech, and assistive technology on physical
+Android and iOS devices over HTTPS; desktop device simulation cannot verify those paths.
+
+Example HTTPS development command:
+
+```bash
+openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes
+uvicorn src.mobile_api:app --host 0.0.0.0 --port 8443 --ssl-keyfile=key.pem --ssl-certfile=cert.pem
+```
+
 Authentication uses `DefaultAzureCredential` by default. Grant that identity the
 `Cognitive Services User` role on the Foundry resource. For local key authentication, set
 `AZURE_CREDENTIAL_MODE=key`; `AZURE_OPENAI_API_KEY` is then used as the Foundry account key

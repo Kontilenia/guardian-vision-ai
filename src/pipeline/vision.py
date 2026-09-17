@@ -8,7 +8,7 @@ from pathlib import Path
 from azure_clients import get_openai_client
 from config import get_settings
 from evidence import evidence_from_choice
-from schemas import VisionResult
+from schemas import FramingAction, VisionResult
 
 _PROMPT = (Path(__file__).parent.parent / "prompts" / "vision.txt").read_text()
 
@@ -43,10 +43,17 @@ def analyze(question: str, image_bytes: bytes) -> VisionResult:
     choice = response.choices[0]
     data = json.loads(choice.message.content)
     critical = data.get("critical_value")
+    raw_framing_action = data.get("framing_action")
+    try:
+        framing_action = FramingAction(
+            raw_framing_action) if raw_framing_action else None
+    except ValueError:
+        framing_action = None
     return VisionResult(
         observations=data.get("observations", ""),
         self_confidence=float(data.get("self_confidence", 0.0)),
         critical_value=None if critical in (
             None, "", "null") else str(critical),
         evidence=evidence_from_choice(choice),
+        framing_action=framing_action,
     )

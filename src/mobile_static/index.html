@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Guardian Vision AI</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="/static/accessible-app.js" defer></script>
+</head>
+
+<body>
+    <main class="shell" aria-labelledby="app-title">
+        <section class="camera-panel" aria-label="Live camera view">
+            <video id="camera" autoplay muted playsinline aria-label="Live camera preview"></video>
+            <canvas id="snapshot" hidden></canvas>
+            <div class="camera-shade" aria-hidden="true"></div>
+            <header class="app-header">
+                <div class="brand-lockup">
+                    <span class="brand-mark" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" focusable="false">
+                            <path d="M12 3 4.5 6v5.2c0 4.7 3.1 8.2 7.5 9.8 4.4-1.6 7.5-5.1 7.5-9.8V6L12 3Z"></path>
+                            <path d="M8.3 12s1.4-2.2 3.7-2.2 3.7 2.2 3.7 2.2-1.4 2.2-3.7 2.2S8.3 12 8.3 12Z"></path>
+                            <circle cx="12" cy="12" r="1"></circle>
+                        </svg>
+                    </span>
+                    <div>
+                        <p class="product-label">Visual assistant</p>
+                        <h1 id="app-title">Guardian Vision AI</h1>
+                    </div>
+                </div>
+                <span id="connection-state" class="state-pill">
+                    <span class="state-pill-dot" aria-hidden="true"></span>
+                    <span id="connection-label">Not started</span>
+                </span>
+            </header>
+            <div class="camera-frame" aria-hidden="true">
+                <span></span><span></span><span></span><span></span>
+            </div>
+            <p class="camera-caption">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M14.5 4 16 7h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l1.5-3h5Z">
+                    </path>
+                    <circle cx="12" cy="13" r="3"></circle>
+                </svg>
+                Point the camera toward what you want to understand
+            </p>
+        </section>
+
+        <section class="control-panel" aria-label="Assistant control panel">
+            <div id="activity-region" class="status-row" aria-atomic="true">
+                <span class="status-indicator" aria-hidden="true">
+                    <span></span>
+                </span>
+                <div>
+                    <p class="status-label">Assistant status</p>
+                    <p id="status" class="status" role="status" aria-live="polite">
+                        Start the assistant, then ask your question aloud.
+                    </p>
+                </div>
+            </div>
+
+            <p id="alert-status" class="visually-hidden" role="alert" aria-live="assertive"></p>
+
+            <section class="input-workspace" aria-labelledby="input-heading">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Ask Guardian</p>
+                        <h2 id="input-heading">Ask by voice</h2>
+                    </div>
+                </div>
+
+                <section class="input-panel" aria-labelledby="input-heading">
+                    <div class="voice-prompt">
+                        <span class="voice-prompt-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false">
+                                <path d="M8 12v1a4 4 0 0 0 8 0v-1M12 3v2M5.6 5.6 7 7M18.4 5.6 17 7M4 12H2M22 12h-2">
+                                </path>
+                            </svg>
+                        </span>
+                        <p>After the listening tone, ask your question aloud. Guardian will capture the view
+                            automatically.</p>
+                    </div>
+                </section>
+
+                <button id="start-button" class="start-button" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="m8 5 11 7-11 7V5Z"></path>
+                    </svg>
+                    <span>Start assistant</span>
+                </button>
+
+                <div id="capture-actions" class="capture-actions" hidden>
+                    <button id="capture-button" class="button button-primary" type="button">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path
+                                d="M14.5 4 16 7h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l1.5-3h5Z">
+                            </path>
+                            <circle cx="12" cy="13" r="3"></circle>
+                        </svg>
+                        <span>Take another picture</span>
+                    </button>
+                    <button id="use-picture-button" class="button" type="button" hidden>
+                        Use this picture
+                    </button>
+                </div>
+            </section>
+
+            <section class="conversation" aria-label="Assistant answer">
+                <article id="answer-panel" class="answer-block" aria-labelledby="answer-heading" hidden>
+                    <div class="answer-heading-row">
+                        <div class="conversation-heading">
+                            <span class="conversation-icon answer-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" focusable="false">
+                                    <path d="m9 12 2 2 4-4"></path>
+                                    <circle cx="12" cy="12" r="9"></circle>
+                                </svg>
+                            </span>
+                            <h2 id="answer-heading">Guardian's answer</h2>
+                        </div>
+                        <span id="confidence-text" class="confidence"></span>
+                    </div>
+                    <p id="answer-text"></p>
+                </article>
+            </section>
+
+            <section class="session-toolbar" aria-label="Session controls and preferences">
+                <div id="session-actions" class="session-actions" hidden>
+                    <button id="repeat-button" class="button button-quiet" type="button" disabled>
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M4 12a8 8 0 1 0 3-6.2L4 8"></path>
+                            <path d="M4 3v5h5"></path>
+                        </svg>
+                        Repeat answer
+                    </button>
+                    <button id="retake-button" class="button button-quiet" type="button" disabled>
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path
+                                d="M14.5 4 16 7h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l1.5-3h5Z">
+                            </path>
+                            <path d="M9 13a3 3 0 0 1 5.5-1.7M15 13a3 3 0 0 1-5.5 1.7"></path>
+                        </svg>
+                        Retake picture
+                    </button>
+                    <button id="stop-button" class="button button-stop" type="button">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <rect x="6" y="6" width="12" height="12" rx="1"></rect>
+                        </svg>
+                        Stop assistant
+                    </button>
+                </div>
+
+                <label class="spoken-status-option">
+                    <span class="option-copy">
+                        <span>Speak status messages</span>
+                        <small>Helpful when you are not using a screen reader</small>
+                    </span>
+                    <span class="switch">
+                        <input id="spoken-status" type="checkbox" checked>
+                        <span class="switch-track" aria-hidden="true"></span>
+                    </span>
+                </label>
+            </section>
+        </section>
+    </main>
+</body>
+
+</html>

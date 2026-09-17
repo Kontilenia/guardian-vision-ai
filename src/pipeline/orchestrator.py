@@ -104,6 +104,7 @@ def run(request: UserRequest, *, synthesize_audio: bool = True) -> FinalResponse
                 spoken_text=spoken,
                 audio_bytes=speech.synthesize(
                     spoken) if synthesize_audio else None,
+                framing_action=first.framing_action,
             )
 
         second = vision.analyze(request.question, request.second_image_bytes)
@@ -138,7 +139,13 @@ def run(request: UserRequest, *, synthesize_audio: bool = True) -> FinalResponse
 
     # 8. Text-to-speech.
     audio = speech.synthesize(spoken) if synthesize_audio else None
-    return FinalResponse(decision=decision, trust=trust, spoken_text=spoken, audio_bytes=audio)
+    return FinalResponse(
+        decision=decision,
+        trust=trust,
+        spoken_text=spoken,
+        audio_bytes=audio,
+        framing_action=active_vision.framing_action,
+    )
 
 
 def _compose_spoken(decision: PolicyDecision) -> str:

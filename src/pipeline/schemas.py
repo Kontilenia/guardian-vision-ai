@@ -27,6 +27,15 @@ class Decision(str, Enum):
     NEEDS_SECOND_CAPTURE = "needs_second_capture"
 
 
+class FramingAction(str, Enum):
+    MOVE_LEFT = "move_left"
+    MOVE_RIGHT = "move_right"
+    MOVE_CLOSER = "move_closer"
+    MOVE_FARTHER = "move_farther"
+    HOLD_STEADY = "hold_steady"
+    IMPROVE_LIGHTING = "improve_lighting"
+
+
 class UserRequest(BaseModel):
     question: str
     image_bytes: bytes
@@ -60,6 +69,7 @@ class VisionResult(BaseModel):
     self_confidence: float = Field(ge=0.0, le=1.0)
     critical_value: Optional[str] = None
     evidence: ProbabilityEvidence = Field(default_factory=ProbabilityEvidence)
+    framing_action: Optional[FramingAction] = None
 
 
 class TrustResult(BaseModel):
@@ -84,3 +94,4 @@ class FinalResponse(BaseModel):
     spoken_text: str
     audio_bytes: Optional[bytes] = None
     blocked_reason: Optional[str] = None
+    framing_action: Optional[FramingAction] = None
